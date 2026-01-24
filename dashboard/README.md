@@ -1,5 +1,7 @@
 # OpenCanary Dashboard
 
+<img width="2067" height="932" alt="image" src="https://github.com/user-attachments/assets/c62bb688-5116-4405-8acb-399b42c68d70" />
+
 A Dockerized dashboard that ingests heartbeat/status from OpenCanary honeypots and displays a real-time web UI.
 
 ## Features

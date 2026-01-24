@@ -1,0 +1,12 @@
+[Unit]
+Description=OpenCanary Dashboard Status Reporter Timer
+After=network-online.target
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=60
+Persistent=true
+RandomizedDelaySec=5
+
+[Install]
+WantedBy=timers.target

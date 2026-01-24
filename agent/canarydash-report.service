@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenCanary Dashboard Status Reporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/canarydash.env
+ExecStart=/opt/canarydash/report.py
+TimeoutSec=30
+User=root
+
+# Hardening (optional but recommended)
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes

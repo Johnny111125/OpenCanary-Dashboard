@@ -1,14 +1,14 @@
-version: "3.8"
-
 services:
   dashboard:
     build: .
     container_name: canarydash
     restart: unless-stopped
     ports:
-      - "${CANARYDASH_PORT:-8088}:8088"
+      - "${CANARYDASH_BIND:-0.0.0.0}:${CANARYDASH_PORT:-8088}:8088"
     environment:
       - CANARYDASH_API_KEY=${CANARYDASH_API_KEY:?CANARYDASH_API_KEY is required}
+      - CANARYDASH_USER=${CANARYDASH_USER:?CANARYDASH_USER is required}
+      - CANARYDASH_PASSWORD=${CANARYDASH_PASSWORD:?CANARYDASH_PASSWORD is required}
       - CANARYDASH_STALE_SECONDS=${CANARYDASH_STALE_SECONDS:-180}
     volumes:
       - canarydash_data:/app/data

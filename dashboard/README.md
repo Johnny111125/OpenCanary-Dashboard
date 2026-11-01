@@ -12,7 +12,8 @@ A Dockerized dashboard that ingests heartbeat/status from OpenCanary honeypots a
 - Port drift detection (configured vs. listening)
 - Simple web UI with auto-refresh
 - SQLite persistence with Docker volume
-- Shared API key authentication
+- Shared API key authentication for agents
+- Username/password (HTTP Basic) login for the web UI and read API
 
 ## Prerequisites
 
@@ -37,6 +38,11 @@ Create a `.env` file or export the environment variable:
 export CANARYDASH_API_KEY=$(openssl rand -hex 32)
 echo "CANARYDASH_API_KEY=$CANARYDASH_API_KEY" > .env
 echo "Save this key for agent configuration: $CANARYDASH_API_KEY"
+
+# Set the dashboard login
+echo "CANARYDASH_USER=admin" >> .env
+echo "CANARYDASH_PASSWORD=$(openssl rand -base64 24)" >> .env
+chmod 600 .env
 ```
 
 ### 3. Start the dashboard
@@ -75,8 +81,9 @@ curl -X POST http://localhost:8088/api/status \
     }
   }'
 
-# Verify node appears
-curl http://localhost:8088/api/nodes
+# Verify node appears (requires dashboard login)
+source .env
+curl -u "$CANARYDASH_USER:$CANARYDASH_PASSWORD" http://localhost:8088/api/nodes
 ```
 
 ## Configuration
@@ -86,7 +93,10 @@ Environment variables (set in `.env` or `docker-compose.yml`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CANARYDASH_API_KEY` | (required) | Shared secret for agent authentication |
+| `CANARYDASH_USER` | (required) | Username for the web UI and `GET /api/nodes` |
+| `CANARYDASH_PASSWORD` | (required) | Password for the web UI and `GET /api/nodes` |
 | `CANARYDASH_PORT` | `8088` | Port to expose the dashboard on |
+| `CANARYDASH_BIND` | `0.0.0.0` | Host address to bind the port to (use `127.0.0.1` behind a reverse proxy) |
 | `CANARYDASH_STALE_SECONDS` | `180` | Seconds before a node is marked stale |
 
 ## API Endpoints
@@ -121,7 +131,7 @@ Receive status updates from agents.
 
 ### GET /api/nodes
 
-Returns all nodes with status, age, and drift information.
+Returns all nodes with status, age, and drift information. Requires HTTP Basic auth (`CANARYDASH_USER` / `CANARYDASH_PASSWORD`).
 
 **Response:**
 ```json
@@ -145,7 +155,19 @@ Returns all nodes with status, age, and drift information.
 
 ### GET /
 
-Web UI dashboard (auto-refreshes every 10 seconds).
+Web UI dashboard (auto-refreshes every 10 seconds). Requires HTTP Basic auth.
+
+The interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are disabled.
+
+## HTTPS
+
+HTTP Basic auth sends credentials in cleartext over plain HTTP. For anything beyond a trusted LAN, put the dashboard behind a TLS reverse proxy (e.g. Caddy or nginx), set `CANARYDASH_BIND=127.0.0.1` so the plain-HTTP port is only reachable locally, and point agents at the `https://` URL. Example Caddyfile:
+
+```
+https://canary.example.com {
+	reverse_proxy 127.0.0.1:8088
+}
+```
 
 ## Data Persistence
 

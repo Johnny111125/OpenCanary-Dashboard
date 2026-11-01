@@ -6,21 +6,43 @@ Ingests heartbeat/status from OpenCanary honeypots and displays a web UI.
 
 import json
 import os
+import secrets
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse, JSONResponse
 
 # Configuration from environment
 API_KEY = os.environ.get("CANARYDASH_API_KEY", "")
 STALE_SECONDS = int(os.environ.get("CANARYDASH_STALE_SECONDS", "180"))
+DASH_USER = os.environ.get("CANARYDASH_USER", "")
+DASH_PASSWORD = os.environ.get("CANARYDASH_PASSWORD", "")
 DB_PATH = Path(os.environ.get("CANARYDASH_DB_PATH", "/app/data/canarydash.db"))
 
-app = FastAPI(title="OpenCanary Dashboard", version="1.0.0")
+app = FastAPI(title="OpenCanary Dashboard", version="1.0.0",
+              docs_url=None, redoc_url=None, openapi_url=None)
+
+basic_auth = HTTPBasic(realm="OpenCanary Dashboard")
+
+
+def require_login(credentials: HTTPBasicCredentials = Depends(basic_auth)) -> str:
+    """Require HTTP Basic credentials for the dashboard UI and read API."""
+    if not DASH_USER or not DASH_PASSWORD:
+        raise HTTPException(status_code=500, detail="Dashboard credentials not configured")
+    user_ok = secrets.compare_digest(credentials.username.encode(), DASH_USER.encode())
+    pass_ok = secrets.compare_digest(credentials.password.encode(), DASH_PASSWORD.encode())
+    if not (user_ok and pass_ok):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password",
+            headers={"WWW-Authenticate": 'Basic realm="OpenCanary Dashboard"'},
+        )
+    return credentials.username
 
 
 def init_db():
@@ -125,7 +147,7 @@ async def post_status(request: Request, x_api_key: str | None = Header(None)):
     return {"status": "ok", "node": node, "received_at": last_seen_utc}
 
 
-@app.get("/api/nodes")
+@app.get("/api/nodes", dependencies=[Depends(require_login)])
 async def get_nodes():
     """
     Return list of all nodes with status and drift information.
@@ -161,7 +183,7 @@ async def get_nodes():
     return {"nodes": nodes, "stale_threshold_seconds": STALE_SECONDS}
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_login)])
 async def index():
     """Serve the dashboard UI."""
     return HTML_PAGE

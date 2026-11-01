@@ -4,7 +4,9 @@ After=network-online.target
 
 [Timer]
 OnBootSec=30
-OnUnitActiveSec=60
+# Schedule relative to when the last run finished (success or failure), so a
+# failed or interrupted run can never leave the timer with no next trigger.
+OnUnitInactiveSec=60
 Persistent=true
 RandomizedDelaySec=5
 

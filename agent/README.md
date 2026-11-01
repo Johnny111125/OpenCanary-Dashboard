@@ -126,7 +126,8 @@ sudo systemctl edit canarydash-report.timer
 Add:
 ```ini
 [Timer]
-OnUnitActiveSec=120
+OnUnitInactiveSec=
+OnUnitInactiveSec=120
 ```
 
 Then reload:
